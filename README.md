@@ -1,3 +1,8 @@
+<!--
+README revised with assistance from OpenAI's ChatGPT (GPT-5.6 Luna), August 2026.
+The repository author remains responsible for the technical accuracy and content.
+-->
+
 # TEAMxRadiosondes 🎈
 
 > Tools for reading, processing, and analysing **radiosonde** data from the [TEAMx](https://www.teamx-programme.org/) campaign and related field projects.
@@ -57,7 +62,7 @@ The `src/TEAMxRadiosondes/` directory contains the main analysis and processing 
 
 ## ⚙️ Installation
 
-### Option 1 — Conda environment
+### Step 1 — Conda environment
 
 A Conda environment file is provided for a reproducible analysis environment.
 
@@ -69,18 +74,17 @@ conda env create -f teamx_environment.yml
 conda activate teamx
 ```
 
-### Option 2 — Install as a Python package
+### Step 2 — Install the corresponding Python package
 
-The repository also contains a `setup.py` file and can be installed in editable mode:
+The repository also contains a `setup.py` file which can be installed in editable mode:
 
 ```bash
-git clone https://github.com/tbanyard/TEAMxRadiosondes_Public.git
 cd TEAMxRadiosondes_Public
 
 pip install -e .
 ```
 
-The editable installation is particularly useful when developing or modifying the analysis tools.
+The editable installation is required to use the analysis tools.
 
 > **Note:** The Conda environment is recommended when reproducing the analysis environment used during development, as some of the processing and plotting scripts rely on a broader set of scientific Python dependencies.
 
@@ -118,6 +122,43 @@ ds = xr.open_dataset("path/to/sounding.nc")
 # See skewt.py for available plotting functions and options.
 ```
 
+### Running `RasoThroughModel`
+
+`RasoThroughModel.py` provides tools for processing radiosonde observations through the model workflow. The script can be run directly from the command line and provides a number of options for controlling the input data, output, and processing configuration.
+
+To see all available options:
+
+```bash
+python src/TEAMxRadiosondes/RasoThroughModel.py --help
+```
+
+A typical command can be run as:
+
+```bash
+python src/TEAMxRadiosondes/RasoThroughModel.py [options]
+```
+
+The available options can be viewed using `--help`. This is recommended before running the script, as some options control the input radiosonde data and processing configuration.
+
+For example:
+
+```bash
+python src/TEAMxRadiosondes/RasoThroughModel.py \
+    --f path/to/radiosondes*.nc \
+    --c path/to/configfile.txt
+```
+
+Depending on the analysis being performed, additional options can be supplied to control the processing.
+
+For a complete description of the available arguments and their default values, run:
+
+```bash
+python src/TEAMxRadiosondes/RasoThroughModel.py --help
+```
+
+> **Note:** The exact command-line options may change as the analysis workflow develops. The `--help` outputs should therefore be treated as the authoritative reference for the current version of the scripts.
+
+
 Other tools in the repository provide functionality for:
 
 * Skew-T log-p diagrams
@@ -134,10 +175,32 @@ Other tools in the repository provide functionality for:
 
 The repository is designed to produce a range of diagnostic atmospheric plots, including thermodynamic profiles, wind profiles, hodographs, and other visualisations used in the analysis of radiosonde observations.
 
-<p align="center">
-  <img src="plots/example_skewt.png" width="500" alt="Example Skew-T log-p diagram">
-</p>
-
+<table>
+  <tr>
+    <td align="center">
+      <img src="plots/examples/example_skewt.png" width="400" alt="Example Skew-T log-p diagram">
+      <br>
+      <strong>Skew-T log-p diagram</strong>
+    </td>
+    <td align="center">
+      <img src="plots/examples/example_uvprofile.png" width="400" alt="Example u-v wind profile">
+      <br>
+      <strong>Wind profile</strong>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="plots/examples/example_hodograph.png" width="400" alt="Example hodograph">
+      <br>
+      <strong>Hodograph</strong>
+    </td>
+    <td align="center">
+      <img src="plots/examples/example_spectrum.png" width="400" alt="Example spectrum">
+      <br>
+      <strong>Wave spectrum</strong>
+    </td>
+  </tr>
+</table>
 ---
 
 ## 🧩 Dependencies

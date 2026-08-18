@@ -19,3 +19,8 @@
 # Windows identifier files
 *.Identifier
 .ipynb_checkpoints/
+
+# Allow example plots
+!plots/
+!plots/examples/
+!plots/examples/*.png
