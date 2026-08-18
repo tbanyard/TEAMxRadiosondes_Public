@@ -122,7 +122,7 @@ ds = xr.open_dataset("path/to/sounding.nc")
 # See skewt.py for available plotting functions and options.
 ```
 
-### Running `RasoThroughModel`
+### Running RasoThroughModel.py
 
 `RasoThroughModel.py` provides tools for processing radiosonde observations through the model workflow. The script can be run directly from the command line and provides a number of options for controlling the input data, output, and processing configuration.
 
@@ -144,17 +144,11 @@ For example:
 
 ```bash
 python src/TEAMxRadiosondes/RasoThroughModel.py \
-    --f path/to/radiosondes*.nc \
-    --c path/to/configfile.txt
+    -f path/to/radiosondes*.nc \
+    -c path/to/configfile.txt
 ```
 
 Depending on the analysis being performed, additional options can be supplied to control the processing.
-
-For a complete description of the available arguments and their default values, run:
-
-```bash
-python src/TEAMxRadiosondes/RasoThroughModel.py --help
-```
 
 > **Note:** The exact command-line options may change as the analysis workflow develops. The `--help` outputs should therefore be treated as the authoritative reference for the current version of the scripts.
 
@@ -224,7 +218,7 @@ For the most reproducible setup, using the supplied Conda environment is recomme
 
 ## 📁 Data
 
-The `data/` directory contains radiosonde data and associated documentation.
+The `data/` directory ought to contain the radiosonde data. This can be accessed on request by email from: tpb38@bath.ac.uk
 
 The data have been compiled from multiple sources, including:
 
