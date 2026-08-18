@@ -1,0 +1,7 @@
+# Model config
+model                    metum
+directory                /gws/ssde/j25b/team_x/sidmba/u-dz290_run7/0p3km_v2
+run_tag                  u-dz290_run7
+prefix                   ALPS_0p3km_ERA5_BAS_MetUM_v2_4s
+clip_method              nco
+save_modellevel_sonde    yes

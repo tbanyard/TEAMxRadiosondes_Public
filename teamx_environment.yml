@@ -1,0 +1,47 @@
+name: teamxenv
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - setuptools
+  - wheel
+
+  # Core scientific Python
+  - numpy=2.0.1
+  - scipy=1.15.3
+  - pandas=2.2.3
+  - xarray=2025.4.0
+  - dask=2026.7.0
+  - distributed=2026.7.0
+
+  # Plotting / analysis
+  - matplotlib=3.10.0
+  - cartopy=0.25.0
+  - metpy=1.7.1
+  - plotly=6.3.0
+
+  # NetCDF / meteorological data
+  - netcdf4=1.7.2
+  - cftime=1.6.4
+  - cfgrib=0.9.15.1
+  - eccodes=2.44.0
+  - python-eccodes=2.44.0
+  - pdbufr=0.14.0
+  - nco=5.3.6
+
+  # Geospatial / remapping
+  - pyproj=3.7.2
+  - shapely=2.1.2
+  - esmf=8.9.1
+  - tempest-remap=2.2.0
+
+  # Other packages directly present in the exported environment
+  - pyarrow=21.0.0
+  - pyyaml=6.0.3
+  - pillow=11.3.0
+
+# The project module itself should be installed separately with:
+#   pip install -e .

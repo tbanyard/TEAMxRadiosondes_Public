@@ -1,0 +1,21 @@
+# Output files
+*.csv
+*.png
+*.pdf
+*.nc
+*.pkl
+*.gif
+*.mp4
+*.bufr
+*.bfr
+*.jpg
+*.kml
+
+# Python runtime
+*.pyc
+*.egg-info
+.pytest_cache
+
+# Windows identifier files
+*.Identifier
+.ipynb_checkpoints/

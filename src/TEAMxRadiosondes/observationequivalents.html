@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; line-height: 1.5; color: #2c3e50; }
+  button { font-family: inherit; }
+  #launchButtonsContainer { display: grid; grid-template-columns: repeat(7, auto); column-gap: 6px; min-height: 40px; }
+  #launchButtonsContainer button { width: 85px; box-sizing: border-box; text-align: center; padding: 0 6px; }
+  #controls > div { margin-top: 12px; }
+  #dateSlider { width: 300px; vertical-align: middle; appearance: none; height: 6px; border-radius: 5px; background: #d0d0d0; outline: none; }
+  #dateSlider::-webkit-slider-runnable-track { height: 6px; background: linear-gradient(to right, #4CAF50, #2196F3); border-radius: 5px; }
+  #dateSlider::-webkit-slider-thumb { appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #2196F3; cursor: pointer; margin-top: -5px; }
+  #dateSlider::-moz-range-track { height: 6px; background: linear-gradient(to right, #4CAF50, #2196F3); border-radius: 5px; }
+  #dateSlider::-moz-range-thumb { width: 16px; height: 16px; border-radius: 50%; background: #fff; border: 2px solid #2196F3; cursor: pointer; }
+  #sliderContainer { position: relative; display: inline-block; width: 300px; }
+  #dateLabel { margin-left: 15px; position: absolute; top: -25px; transform: translateX(-50%); font-size: 14px; font-weight: bold; color: #2c3e50; min-width: 140px; pointer-events: none; }
+  #eopControls { display: flex; align-items: center; gap: 12px; padding: 8px 12px; background: #f5f7fa; border-radius: 8px; flex-wrap: wrap; }
+  #loadingOverlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.8); font-weight: bold; z-index: 10; }
+  .spinner { width: 40px; height: 40px; border: 4px solid #ccc; border-top: 4px solid #2196F3; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #plot_frame { transition: opacity 0.2s ease; }
+  .disabledPlot { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+  .viewer { width: 750px; height: 750px; position: relative; flex: 0 0 auto; max-width: 100%; margin-bottom: 30px;}
+  #viewerContainer { display: flex; flex-wrap: wrap; gap: 140px; justify-content: flex-start; align-items: flex-start; }
+  /*.dualViewToggleBtn {position: absolute; top: 8px; right: 8px; z-index: 30; padding: 4px 8px; font-size: 14px; cursor: pointer; } */
+  /*.dualViewToggleBtn {position: absolute; top: 8px; left: min(630px, calc(100% - 120px)); z-index: 30; padding: 4px 8px; font-size: 14px; cursor: pointer; } */
+  .dualViewToggleBtn {position: absolute; top: 15px; right: calc(100% - 757px); z-index: 30; padding: 4px 8px; font-size: 14px; cursor: pointer; }
+</style>
+
+<title>TEAMx Observation Equivalents Viewer</title>
+</head>
+
+<body>
+  <p class="heading">
+    Plots of observation equivalents for the 2025 TEAMx Campaign
+    (<a href="https://gws-access.jasmin.ac.uk/public/team_x/quicklooks/radiosonde_obs/sonde_profiles/README.md">README</a>)
+  </p>
+<button class="dualViewToggleBtn">Dual-view</button>
+<div id="viewerContainer">
+  <div class="viewer" id="viewer1">
+    <div id="controls">
+      <div id="eopControls">
+        <button id="btnWEOP">wEOP</button>
+        <button id="btnSEOP">sEOP</button>
+
+        <span id="startDate"></span>
+        <div id="sliderContainer">
+          <input type="range" id="dateSlider" min="0" max="0" value="0">
+          <div id="dateLabel"></div>
+        </div>
+        <span id="endDate"></span>
+      </div>
+
+      <div id="siteControls">
+        Site:
+        <button id="btnSterzing">Sterzing</button>
+        <button id="btnKolsass">Kolsass</button>
+        <button id="btnBozen">Bozen</button>
+      </div>
+
+      <div id="launchControls" style="display: flex; gap: 6px;">
+        <span>Launches:</span>
+        <div id="launchButtonsContainer"><span id="launchButtons"></span></div>
+      </div>
+
+      <div id="plotControls">
+        Plot Type:
+        <button id="btnSkewT">Skew-T</button>
+        <button id="btnUV">UV Profile</button>
+        <button id="btnHodo">Hodograph</button>
+        <button id="btnPower">Power Spectrum</button>
+        <button id="btn3D">View in 3D</button>
+      </div>
+
+      <div id="plots" style="position: relative; width: 680px; height: 680px; display: flex; align-items: center; justify-content: center;">
+        <div id="loadingOverlay"><div class="spinner"></div><div>Loading...</div></div>
+        <img id="plot_frame" style="max-width: 100%; max-height: 100%; display: none;">
+        <div id="cesiumContainer" style="width: 680px; height: 680px; display: none;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ----- GLOBAL HELPERS -----
+  const imgDir = "https://gws-access.jasmin.ac.uk/public/team_x/quicklooks/radiosonde_obs/sonde_profiles/plots";
+  let launches = {};
+
+  function generateDates(start, end) {
+    let arr = [], d = new Date(start), endDate = new Date(end);
+    while (d <= endDate) {
+      arr.push(d.getFullYear().toString().padStart(4,"0") + 
+               (d.getMonth()+1).toString().padStart(2,"0") + 
+               d.getDate().toString().padStart(2,"0"));
+      d.setDate(d.getDate() + 1);
+    }
+    return arr;
+  }
+
+  function formatDate(d) {
+    const date = new Date(d.slice(0,4), d.slice(4,6)-1, d.slice(6,8));
+    return date.toLocaleDateString("en-GB",{ weekday:"short", day:"numeric", month:"short", year:"numeric" });
+  }
+
+  function formatTime(t) { return t.slice(0,2) + ":" + t.slice(2,4) + ":" + t.slice(4,6); }
+  function padSiteName(site) { return site.toUpperCase().padEnd(8,"_"); }
+
+  /*function processFiles(files) {
+    files.forEach(f => {
+      let [site, , filename] = f.split("/");
+      let [day, time, serial, plot] = filename.replace(".png","").split("_");
+      if (!(day in launches)) launches[day] = [];
+      if (!launches[day].some(l=>l.time===time && l.serial===serial))
+        launches[day].push({site, day, time, serial});
+    });
+  }*/
+
+  function processFiles(files) {
+    files.forEach(f => {
+      if (!f) return; // skip empty
+
+      let pathParts = f.split("/");
+
+      // Require at least 3 parts
+      if (pathParts.length < 3) {
+        console.warn("Skipping malformed path:", f);
+        return;
+      }
+
+      let site = pathParts[0];
+      let filename = pathParts[2];
+
+      if (!filename) {
+        console.warn("Missing filename in:", f);
+        return;
+      }
+
+      let parts = filename.replace(".png", "").split("_");
+
+      if (parts.length < 4) {
+        console.warn("Bad filename format:", filename);
+        return;
+      }
+
+      let day = parts[0];
+      let time = parts[1];
+      let serial = parts[2];
+
+      if (!(day in launches)) launches[day] = [];
+
+      let exists = launches[day].some(l =>
+        l.time === time && l.serial === serial
+      );
+
+      if (!exists) {
+        launches[day].push({ time, serial, site });
+      }
+    });
+  }
+
+  // ----- VIEWER CLASS -----
+  class Viewer {
+    constructor(containerId) {
+      this.container = document.getElementById(containerId);
+      this.site = "sterzing";
+      this.plot_type = "skewt";
+      this.currentDateIndex = 0;
+      this.EOP = "wEOP";
+      this.time = "203915";
+      this.serial = "S0250198";
+      this.is3DView = false;
+      this.cesiumViewer = null;
+      this.currentKmlLoadId = 0;
+
+      // init DOM references
+      this.slider = this.container.querySelector("#dateSlider");
+      this.label = this.container.querySelector("#dateLabel");
+      this.img = this.container.querySelector("#plot_frame");
+      this.overlay = this.container.querySelector("#loadingOverlay");
+
+      // bind events
+      this.slider.oninput = e => this.onSliderChange(e.target.value);
+
+      ["btnWEOP","btnSEOP"].forEach(id=>{
+        let btn=this.container.querySelector("#"+id);
+        btn.onclick=()=>this.setEOP(id==="btnWEOP"?"wEOP":"sEOP");
+      });
+
+      ["btnSterzing","btnKolsass","btnBozen"].forEach(id=>{
+        let btn=this.container.querySelector("#"+id);
+        btn.onclick=()=>this.setSite(id.slice(3).toLowerCase());
+      });
+
+      ["btnSkewT","btnUV","btnHodo","btnPower"].forEach(id=>{
+        let btn=this.container.querySelector("#"+id);
+        btn.onclick=()=>this.setPlotType(id==="btnSkewT"?"skewt":
+                                       id==="btnUV"?"uvprofile":
+                                       id==="btnHodo"?"hodograph":"pspectra");
+      });
+
+      const btn3D=this.container.querySelector("#btn3D");
+      btn3D.onclick = () => { this.is3DView = true; this.view3D(); };
+
+      this.resetSlider();
+    }
+
+    resetSlider() {
+      const dateArray = this.EOP==="wEOP"?dates.wEOP:dates.sEOP;
+      this.currentDateIndex = 0;
+      this.slider.max = dateArray.length-1;
+      this.slider.value = 0;
+      this.container.querySelector("#startDate").innerText = formatDate(dateArray[0]);
+      this.container.querySelector("#endDate").innerText = formatDate(dateArray[dateArray.length-1]);
+      if (!this.is3DView) {
+        this.updateImg();
+      }
+    }
+
+    onSliderChange(val) {
+      this.currentDateIndex = parseInt(val);
+      clearTimeout(this.sliderTimeout);
+      this.sliderTimeout = setTimeout(()=>{ 
+        if(this.is3DView) this.view3D(); 
+        else this.updateImg(); 
+      }, 25);
+    }
+
+    setEOP(eop) { this.EOP=eop; this.resetSlider(); this.updateEOPButtonStyles(); if (this.is3DView) { this.view3D(); } }
+    setSite(site) { this.site=site;   if (this.is3DView) { this.view3D(); } else { this.updateImg(); }}
+    setPlotType(plot) { this.plot_type=plot; this.is3DView=false; const cesiumContainer = this.container.querySelector("#cesiumContainer"); if (this.cesiumViewer) { this.cesiumViewer.destroy(); this.cesiumViewer = null; } cesiumContainer.style.display="none"; this.img.style.display="block"; this.overlay.innerHTML = `<div class="spinner"></div> <div>Loading...</div>`; this.updateImg(); }
+
+    updateImg() {
+      const dateArray = this.EOP==="wEOP"?dates.wEOP:dates.sEOP;
+      const day = dateArray[this.currentDateIndex];
+      const month = day.slice(0,6);
+      this.label.innerText = formatDate(day);
+      this.label.style.left = (this.currentDateIndex/this.slider.max*this.slider.offsetWidth)+"px";
+
+      let launch=null;
+      if(launches[day]){
+        launch=launches[day].find(l=>l.site===this.site && l.time===this.time && l.serial===this.serial);
+        if(!launch) launch=launches[day].find(l=>l.site===this.site);
+        if(!launch && launches[day].length>0) launch=launches[day][0];
+      }
+      if(launch){
+        this.site=launch.site; this.time=launch.time; this.serial=launch.serial;
+        //if (!this.launches[day]?.some(l => l.site === this.site && l.time === this.time && l.serial === this.serial)) { this.site = launch.site; this.time = launch.time; this.serial = launch.serial; }
+        var imgSrc=`${imgDir}/${launch.site}/${month}/${day}_${launch.time}_${launch.serial}_${this.plot_type}.png`;
+      } else var imgSrc="./plots/nodata2.png";
+
+      this.overlay.style.display="flex"; this.img.style.display="none"; this.img.style.opacity=0;
+
+      const newImg=new Image();
+      newImg.onload=()=>{ this.img.src=newImg.src; this.img.style.display="block"; requestAnimationFrame(()=>this.img.style.opacity=1); this.overlay.style.display="none"; };
+      newImg.onerror=()=>{ this.img.src="./plots/nodata.png"; this.img.style.display="block"; this.overlay.style.display="none"; };
+      newImg.src=imgSrc;
+
+      this.updateSiteButtons(day);
+      this.updateLaunchButtons(day);
+      this.updateSiteButtonStyles();
+      this.updatePlotTypeButtonStyles();
+      this.updateEOPButtonStyles();
+    }
+
+    updateSiteButtons(day){
+      const sitesWithData = new Set((launches[day]||[]).map(l=>l.site));
+      ["sterzing","kolsass","bozen"].forEach(s=>{
+        const btn=this.container.querySelector("#btn"+s.charAt(0).toUpperCase()+s.slice(1));
+        if(!btn) return;
+        btn.disabled=!sitesWithData.has(s);
+        btn.style.opacity=sitesWithData.has(s)?1:0.4;
+      });
+    }
+
+    updateLaunchButtons(day){
+      const launchContainer=this.container.querySelector("#launchButtons");
+      if(!launchContainer) return;
+      launchContainer.innerHTML="";
+      if(!(day in launches)) return;
+      launches[day].filter(l=>l.site===this.site).sort((a,b)=>a.time.localeCompare(b.time)).forEach(l=>{
+        const btn=document.createElement("button");
+        btn.innerText=formatTime(l.time)+" ("+l.serial+")";
+        btn.onclick=()=>{ this.time=l.time; this.serial=l.serial; this.updateImg(); };
+        btn.onclick = () => { this.time = l.time; this.serial = l.serial; if (this.is3DView) { this.view3D(); } else { this.updateImg(); }};
+        btn.style.fontWeight=(l.time===this.time && l.serial===this.serial)?"bold":"normal";
+        launchContainer.appendChild(btn);
+      });
+    }
+
+    updateSiteButtonStyles() {
+      ["sterzing","kolsass","bozen"].forEach(s => {
+        const btn = this.container.querySelector("#btn" + s.charAt(0).toUpperCase() + s.slice(1));
+        if (!btn) return;
+        btn.style.fontWeight = (s === this.site) ? "bold" : "normal";
+      });
+    }
+
+    updatePlotTypeButtonStyles() {
+      const map = {
+        skewt: "btnSkewT",
+        uvprofile: "btnUV",
+        hodograph: "btnHodo",
+        pspectra: "btnPower"
+      };
+
+      Object.entries(map).forEach(([type, id]) => {
+        const btn = this.container.querySelector("#" + id);
+        if (!btn) return;
+
+        btn.style.fontWeight =
+          (!this.is3DView && this.plot_type === type) ? "bold" : "normal";
+      });
+
+      const btn3D = this.container.querySelector("#btn3D");
+      if (btn3D) {
+        btn3D.style.fontWeight = this.is3DView ? "bold" : "normal";
+      }
+    }
+
+    updateEOPButtonStyles() {
+      ["btnWEOP","btnSEOP"].forEach(id => {
+        const btn = this.container.querySelector("#" + id);
+        if (!btn) return;
+
+        const value = (id === "btnWEOP") ? "wEOP" : "sEOP";
+        btn.style.fontWeight = (this.EOP === value) ? "bold" : "normal";
+      });
+    }
+
+    view3D(){
+      this.is3DView=true;
+      const dateArray = this.EOP==="wEOP"?dates.wEOP:dates.sEOP;
+      const day=dateArray[this.currentDateIndex];
+      const month=day.slice(0,6);
+      let launch = null;
+        if (launches[day]) {
+        launch = launches[day].find(l =>
+            l.site === this.site &&
+            l.time === this.time &&
+            l.serial === this.serial
+        );
+
+        // fallback: same site
+        if (!launch) launch = launches[day].find(l => l.site === this.site);
+
+        // fallback: any launch that day
+        if (!launch && launches[day].length > 0) launch = launches[day][0];
+        }
+
+        if (!launch) {
+        this.overlay.style.display = "flex";
+        this.overlay.innerHTML = "<div>No 3D data for this selection</div>";
+        return;
+        }
+
+        // 🔑 update state so slider + buttons stay in sync
+        this.site = launch.site;
+        this.time = launch.time;
+        this.serial = launch.serial;
+        this.updateSiteButtons(day);
+        this.updateLaunchButtons(day);
+        this.updateSiteButtonStyles();
+        this.updatePlotTypeButtonStyles();
+        this.updateEOPButtonStyles();
+        this.label.innerText = formatDate(day);
+        this.label.style.left = (this.currentDateIndex / this.slider.max * this.slider.offsetWidth) + "px";
+
+      const sitePadded=padSiteName(launch.site);
+      const kmlUrl=`https://gws-access.jasmin.ac.uk/public/team_x/quicklooks/radiosonde_obs/sonde_profiles/kmls/${launch.site}/${month}/${day}_${launch.time}_${launch.serial}_${sitePadded}_SONDE.kml`;
+      const cesiumContainer=this.container.querySelector("#cesiumContainer");
+      this.img.style.display="none"; cesiumContainer.style.display="block"; this.overlay.style.display="none";
+
+      if(!this.cesiumViewer || this.cesiumViewer.isDestroyed?.()) this.cesiumViewer=new Cesium.Viewer(cesiumContainer,{baseLayer:Cesium.ImageryLayer.fromProviderAsync(Cesium.ArcGisMapServerImageryProvider.fromUrl("https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer")), baseLayerPicker:true });
+      this.cesiumViewer.dataSources.removeAll();
+
+      const loadId=++this.currentKmlLoadId;
+      Cesium.KmlDataSource.load(kmlUrl,{camera:this.cesiumViewer.scene.camera,canvas:this.cesiumViewer.scene.canvas,clampToGround:false})
+        .then(ds=>{ if(loadId!==this.currentKmlLoadId) return; this.cesiumViewer.dataSources.removeAll(); this.cesiumViewer.dataSources.add(ds); this.cesiumViewer.zoomTo(ds); })
+        .catch(()=>{ if(loadId!==this.currentKmlLoadId) return; console.warn("KML failed to load"); });
+    }
+
+    syncUIToState() {
+      const slider = document.getElementById("dateSlider");
+
+      // Sync slider position
+      slider.value = viewer1.currentDateIndex;
+
+      // Update viewer1
+      if (viewer1.is3DView) {
+        viewer1.viewSonde3D();
+      } else {
+        viewer1.updateImg();
+      }
+
+      // Sync viewer2 if it exists
+      if (viewer2) {
+        viewer2.currentDateIndex = viewer1.currentDateIndex;
+        viewer2.site = viewer1.site;
+        viewer2.time = viewer1.time;
+        viewer2.serial = viewer1.serial;
+        viewer2.plot_type = viewer1.plot_type;
+        viewer2.is3DView = viewer1.is3DView;
+
+        if (viewer2.is3DView) {
+          viewer2.viewSonde3D();
+        } else {
+          viewer2.updateImg();
+        }
+      }
+    }
+  }
+
+  // ----- INITIALISATION -----
+  const dates = { wEOP: generateDates("2025-01-16","2025-02-28"), sEOP: generateDates("2025-05-30","2025-08-02") };
+
+  const viewer1 = new Viewer("viewer1");
+
+  const dualBtn = document.querySelector(".dualViewToggleBtn");
+  let viewer2 = null;
+
+  dualBtn.onclick = () => {
+    const container = document.getElementById("viewerContainer");
+
+    if (!viewer2) {
+      const v1 = document.getElementById("viewer1");
+      const v2 = v1.cloneNode(true);
+      v2.id = "viewer2";
+
+      // Clean Cesium from clone
+      const cesiumDiv = v2.querySelector("#cesiumContainer");
+      if (cesiumDiv) {
+        cesiumDiv.innerHTML = "";   // remove any existing canvas
+        cesiumDiv.style.display = "none";
+      }
+
+      // ensure image is visible
+      const img = v2.querySelector("#plot_frame");
+      if (img) img.style.display = "block";
+
+      // Remove button from clone
+      const btn = v2.querySelector(".dualViewToggleBtn");
+      if (btn) btn.remove();
+
+      container.appendChild(v2);
+
+      // Create new Viewer instance
+      viewer2 = new Viewer("viewer2");
+
+      // Sync date index
+      viewer2.currentDateIndex = viewer1.currentDateIndex;
+      //viewer2.updateImg();
+      viewer2.site = viewer1.site;
+      viewer2.time = viewer1.time;
+      viewer2.serial = viewer1.serial;
+      viewer2.plot_type = viewer1.plot_type;
+      viewer2.is3DView = viewer1.is3DView;
+      dualBtn.innerText = "Single-view";
+      syncUIToState();
+
+      // Arrange viewers
+      if (window.innerWidth < 2 * 750 + 20) { // not enough space
+        container.style.flexDirection = "column";
+      } else {
+        container.style.flexDirection = "row";
+      }
+
+    } else {
+      // Remove second viewer
+      if (viewer2 && viewer2.cesiumViewer) {
+        viewer2.cesiumViewer.destroy();
+      }
+      const v2Div = document.getElementById("viewer2");
+      if (v2Div) container.removeChild(v2Div);
+      viewer2 = null;
+      dualBtn.innerText = "Dual-view";
+
+      container.style.flexDirection = "row"; // back to default
+    }
+    syncUIToState();
+  };
+
+  // Update on window resize
+  window.addEventListener("resize", () => {
+    const container = document.getElementById("viewerContainer");
+    if (viewer2) {
+      container.style.flexDirection = window.innerWidth < 2 * 750 + 20 ? "column" : "row";
+    }
+  });
+
+  // Fetch file list and build launches dynamically
+  fetch("file_list.json").then(res=>res.json()).then(files=>{ processFiles(files); viewer1.resetSlider(); });
+
+</script>
+
+</body>
+</html>

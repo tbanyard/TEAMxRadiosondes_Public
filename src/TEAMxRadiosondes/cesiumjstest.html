@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
+<link href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css" rel="stylesheet">
+
+<style>
+#cesiumContainer {
+  width: 100%;
+  height: 95%;
+}
+</style>
+
+</head>
+
+<body>
+
+<div id="cesiumContainer"></div>
+
+<script>
+const viewer = new Cesium.Viewer("cesiumContainer", {
+    baseLayer: Cesium.ImageryLayer.fromProviderAsync(
+        Cesium.ArcGisMapServerImageryProvider.fromUrl(
+            "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+        )
+    ),
+    baseLayerPicker: true
+});
+
+// "../../data/Sterzing/kml/Sonde_20250226-1400a.kml"
+Cesium.KmlDataSource.load(
+    "https://gws-access.jasmin.ac.uk/public/team_x/quicklooks/radiosonde_obs/sonde_profiles/kmls/sterzing/202502/20250226_140021_S0240177_STERZING_SONDE.kml",
+    {
+        camera: viewer.scene.camera,
+        canvas: viewer.scene.canvas,
+        clampToGround: false
+    }
+).then(function(ds) {
+    viewer.dataSources.add(ds);
+    viewer.zoomTo(ds).then(function() {
+
+        // Get bounding sphere of the KML
+        const entities = ds.entities.values;
+        const positions = [];
+
+        entities.forEach(function(entity) {
+            if (entity.position) {
+                positions.push(entity.position.getValue(Cesium.JulianDate.now()));
+            }
+        });
+
+        const bounding = Cesium.BoundingSphere.fromPoints(positions);
+        const center = bounding.center;
+
+        startOrbit(center);
+
+    });
+});
+
+/*
+// This function is supposed to allow the camera to orbit, but it currently does not work
+function startOrbit(center) {
+
+    const radius = 200000;   // distance from centre (meters)
+    let angle = 0;
+
+    viewer.clock.onTick.addEventListener(function() {
+
+        angle += 0.002;  // rotation speed
+
+        const offset = new Cesium.Cartesian3(
+            radius * Math.cos(angle),
+            radius * Math.sin(angle),
+            radius * 0.2
+        );
+
+        const transform = Cesium.Transforms.eastNorthUpToFixedFrame(center);
+
+        const cameraPosition = Cesium.Matrix4.multiplyByPoint(
+            transform,
+            offset,
+            new Cesium.Cartesian3()
+        );
+
+        viewer.camera.setView({
+            destination: cameraPosition,
+            orientation: {
+                heading: angle + Math.PI,
+                pitch: -0.4,
+                roll: 0
+            }
+        });
+
+    });
+
+}
+*/
+</script>
+
+
+
+</body>
+</html>
